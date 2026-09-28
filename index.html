@@ -1,4 +1,4 @@
-🏃💨<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
@@ -112,6 +112,7 @@
 </head>
 <body>
     <h1>AI時代の給料泥棒シミュレーター</h1>
+    <div class="description">あなたは最強のAIを裏で動かす天才（泥棒）。自分は何もしなくても画面上のタスクはAIが全自動処理！<br>ただし、上司（👹）の視界に引っかかると不審度が上昇します。</div>
     
     <div style="position: relative;">
         <div id="game-container">
@@ -171,12 +172,11 @@
         </div>
     </div>
     
-    <div class="description" style="margin-top: 22px; margin-bottom: 0;">あなたは最強のAIを裏で動かす天才（泥棒）。自分は何もしなくても画面上のタスクはAIが全自動処理！<br>ただし、上司（👹）の視界に引っかかると不審度が上昇します。</div>
     <div id="controls-info"><strong>【操作方法】</strong><br>上司(👹)の視界の中にあなたの席(🖥️)が入ると不審度が上昇します。<br>上司の視界にいる間、<span class="key">スペースキー</span> または <span class="key">画面長押し</span> で「仕事やってるフリ（タイピング）」をしてください。<br>※お金が貯まると画面右上にドリンクが出現。<span class="key">左右キー</span>で緑色の枠を選択し、<span class="key">エンターキー</span>で飲むことができます。<br>※所持金が1000円を超えると、上司は外周を離れて自機に近づいてきます。</div>
 
     <script>
         let gameActive = false, isGameOver = false, score = 0, suspicion = 0, stamina = 100, willpower = 100, isHolding = false, isExhausted = false, exhaustedTimer = 0, currentTaskProgress = 0, currentTaskName = "";
-        let drinkCount = 0, isRestroom = false, restroomTimer = 0, bossRestroomArrivedAt = null;
+        let drinkCount = 0, isRestroom = false, restroomTimer = 0;
         
         const boss = { x: 30, y: 30, speed: 1.5 };
         let patrolT = 0;
@@ -260,7 +260,7 @@
         
         function startGame() { 
             score = 0; suspicion = 0; stamina = 100; willpower = 100; isHolding = false; isExhausted = false; exhaustedTimer = 0; isGameOver = false;
-            drinkCount = 0; isRestroom = false; restroomTimer = 0; bossRestroomArrivedAt = null;
+            drinkCount = 0; isRestroom = false; restroomTimer = 0;
             elPlayer.style.top = '330px';
             elPlayer.style.left = '270px';
             boss.x = 30; boss.y = 30; patrolT = 0;
@@ -319,7 +319,6 @@
                 if (drinkCount >= 7 && !isRestroom) {
                     isRestroom = true;
                     restroomTimer = 1620; 
-                    bossRestroomArrivedAt = null;
                     drinkCount = 0;
                     elPlayer.style.top = '650px';
                     addLog("【トイレ】ドリンクの飲みすぎでトイレに駆け込みました！");
@@ -391,7 +390,6 @@
                     } else {
                         boss.x = target.x;
                         boss.y = target.y;
-                        if (bossRestroomArrivedAt === null) bossRestroomArrivedAt = performance.now();
                     }
                     elBoss.style.left = boss.x + 'px'; 
                     elBoss.style.top = boss.y + 'px'; 
@@ -485,7 +483,6 @@
                 isHolding = false;
                 if (restroomTimer <= 0) {
                     isRestroom = false;
-                    bossRestroomArrivedAt = null;
                     elPlayer.style.top = '360px';
                     elPlayer.style.left = '270px';
                     addLog("トイレから戻ってきましたが、自席から少し離れた位置に着きました。");
@@ -558,9 +555,10 @@
             const distToPlayer = Math.hypot(boss.x - playerPos.x, boss.y - playerPos.y); 
             
             let isBossAtDesk = true;
-            if (isRestroom) {
-                // 上司がPC前に到達して完全に停止してから1秒後に、ゲージ上昇を開始
-                isBossAtDesk = (bossRestroomArrivedAt !== null && performance.now() - bossRestroomArrivedAt >= 1000);
+            if (isRestroom && restroomTimer > 1200) {
+                isBossAtDesk = false; 
+            } else if (isRestroom && restroomTimer <= 1200 && restroomTimer > 960) {
+                isBossAtDesk = false; 
             }
 
             if (distToPlayer < 135 && isBossAtDesk) { 
