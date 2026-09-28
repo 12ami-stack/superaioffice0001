@@ -280,7 +280,7 @@
             elScore.innerText = `¥${score.toLocaleString()}`;
             elOverlay.style.display = 'flex'; 
             elOverlayTitle.innerText = "🚨 クビになりました 🚨"; 
-            elOverlayDesc.innerHTML = `あなたは上司にいんちきを見破られました。<br><strong>生涯泥棒獲得賃金: ¥${score.toLocaleString()}</strong><br><span style="font-size: 17px; color: #aaa; margin-top: 10px; display: inline-block;">([Enter]キー または下のボタンで再スタート)</span>`; 
+            elOverlayDesc.innerHTML = `あなたは上司にサボりを見破られました。<br><strong>生涯泥棒獲得賃金: ¥${score.toLocaleString()}</strong><br><span style="font-size: 17px; color: #aaa; margin-top: 10px; display: inline-block;">([Enter]キー または下のボタンで再スタート)</span>`; 
             elStartBtn.innerText = "もう一度出勤する"; 
         }
 
@@ -479,7 +479,7 @@
             
             if (isRestroom) {
                 restroomTimer--;
-                elPlayer.innerText = "🏃💨";
+                elPlayer.innerHTML = '<span style="display:block;flex:none;width:60px;text-align:left;white-space:nowrap;">🏃💨</span>'; // 横並び・右側にはみ出す
                 isHolding = false;
                 if (restroomTimer <= 0) {
                     isRestroom = false;
@@ -554,12 +554,11 @@
 
             const distToPlayer = Math.hypot(boss.x - playerPos.x, boss.y - playerPos.y); 
             
-            // トイレ中：PCを見に来てからさらに4秒（240フレーム）経過するまでは不審ゲージがたまらないように修正
             let isBossAtDesk = true;
             if (isRestroom && restroomTimer > 1200) {
-                isBossAtDesk = false; // まだ見に来ていない期間
+                isBossAtDesk = false; 
             } else if (isRestroom && restroomTimer <= 1200 && restroomTimer > 960) {
-                isBossAtDesk = false; // 到着したが、遅延4秒（240フレーム）が経過するまでの間
+                isBossAtDesk = false; 
             }
 
             if (distToPlayer < 135 && isBossAtDesk) { 
