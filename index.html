@@ -554,12 +554,12 @@
 
             const distToPlayer = Math.hypot(boss.x - playerPos.x, boss.y - playerPos.y); 
             
-            // トイレ中：PCを見に来てからさらに2秒（120フレーム）経過するまでは不審ゲージがたまらないように修正
+            // トイレ中：PCを見に来てからさらに4秒（240フレーム）経過するまでは不審ゲージがたまらないように修正
             let isBossAtDesk = true;
             if (isRestroom && restroomTimer > 1200) {
                 isBossAtDesk = false; // まだ見に来ていない期間
-            } else if (isRestroom && restroomTimer <= 1200 && restroomTimer > 1080) {
-                isBossAtDesk = false; // 到着したが、遅延2秒（120フレーム）が経過するまでの間
+            } else if (isRestroom && restroomTimer <= 1200 && restroomTimer > 960) {
+                isBossAtDesk = false; // 到着したが、遅延4秒（240フレーム）が経過するまでの間
             }
 
             if (distToPlayer < 135 && isBossAtDesk) { 
