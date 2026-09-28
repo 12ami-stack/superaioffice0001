@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI時代の給料泥棒シミュレーター</title>
+    <style>
+        :root { --bg-color: #1e1e24; --panel-bg: #2a2a35; --text-color: #f0f0f5; --accent-color: #4caf50; --alert-color: #ff3d00; --stamina-color: #2196f3; --will-color: #9c27b0; }
+        body { margin: 0; padding: 30px; background-color: var(--bg-color); color: var(--text-color); font-family: 'Helvetica Neue', Arial, sans-serif; display: flex; flex-direction: column; align-items: center; user-select: none; font-size: 21px; }
+        h1 { margin: 0 0 15px 0; font-size: 36px; text-align: center; }
+        .description { font-size: 21px; color: #aaa; margin-bottom: 30px; text-align: center; max-width: 900px; line-height: 1.5; }
+        #game-container { position: relative; display: flex; gap: 30px; background: var(--panel-bg); padding: 30px; border-radius: 18px; box-shadow: 0 12px 36px rgba(0,0,0,0.3); }
+        #office-floor { position: relative; width: 600px; height: 600px; background-color: #3a3a4a; border: 6px solid #555; border-radius: 12px; overflow: hidden; }
+        .grid-line { position: absolute; background: rgba(255,255,255,0.05); }
+        .entity { position: absolute; font-size: 48px; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; transition: all 0.2s linear; }
+        #player { z-index: 10; left: 270px; top: 330px; transition: transform 2.0s ease-in-out, top 2.0s ease-in-out, left 2.0s ease-in-out; }
+        #desk { position: absolute; left: 270px; top: 270px; z-index: 5; }
+        #boss { z-index: 15; left: 30px; top: 30px; }
+        .boss-sight { position: absolute; width: 240px; height: 240px; background: rgba(255, 87, 34, 0.2); border-radius: 50%; transform: translate(-90px, -90px); pointer-events: none; display: block; z-index: 8; }
+        #side-panel { width: 450px; display: flex; flex-direction: column; gap: 15px; }
+        .status-box { background: rgba(0,0,0,0.2); padding: 14px 18px; border-radius: 12px; border-left: 6px solid var(--accent-color); }
+        .status-title { font-size: 16px; color: #888; text-transform: uppercase; margin-bottom: 4px; }
+        .status-value { font-size: 26px; font-weight: bold; }
+        #pc-screen { background: #05050d; border: 3px solid #555; border-radius: 9px; height: 160px; padding: 12px; font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #00ff66; overflow-y: hidden; display: flex; flex-direction: column; gap: 4px; box-shadow: inset 0 0 15px rgba(0,255,0,0.2); }
+        .progress-bar-container { width: 100%; background: #333; height: 14px; border-radius: 7px; overflow: hidden; margin-top: 4px; }
+        .progress-bar { height: 100%; background: var(--accent-color); width: 0%; transition: width 0.1s linear; }
+        
+        .status-box.suspicion-box {
+            background: rgba(255, 61, 0, 0.05);
+            border: 1px solid rgba(255, 61, 0, 0.2);
+            border-left: 6px solid var(--alert-color);
+        }
+        #suspicion-text {
+            color: #ff8a80;
+            text-shadow: 0 0 8px rgba(255, 61, 0, 0.4);
+        }
+        .suspicion-container {
+            background: #151110;
+            height: 20px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 61, 0, 0.3);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
+            margin-top: 6px;
+            display: flex;
+            gap: 3px;
+            padding: 3px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        .suspicion-cell {
+            flex: 1;
+            background: #2a1f1d;
+            border-radius: 2px;
+            transition: background 0.1s, box-shadow 0.1s;
+        }
+        .suspicion-cell.active-low {
+            background: #ff9800;
+            box-shadow: 0 0 6px rgba(255, 152, 0, 0.8);
+        }
+        .suspicion-cell.active-mid {
+            background: #ff3d00;
+            box-shadow: 0 0 8px rgba(255, 61, 0, 0.9);
+        }
+        .suspicion-cell.active-high {
+            background: #d50000;
+            box-shadow: 0 0 10px rgba(213, 0, 0, 1);
+            animation: danger-pulse 0.4s infinite alternate;
+        }
+
+        @keyframes danger-pulse {
+            from { filter: brightness(1); }
+            to { filter: brightness(1.4); }
+        }
+
+        #stamina-bar { background: var(--stamina-color); }
+        #will-bar { background: var(--will-color); }
+        #controls-info { margin-top: 22px; font-size: 19px; color: #bbb; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 9px; line-height: 1.5; max-width: 1080px; }
+        .key { background: #444; padding: 3px 9px; border-radius: 6px; color: #fff; font-size: 16px; border-bottom: 3px solid #222; }
+        #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 18px; text-align: center; }
+        #start-btn { background: var(--accent-color); color: white; border: none; padding: 18px 45px; font-size: 27px; border-radius: 9px; cursor: pointer; margin-top: 30px; font-weight: bold; }
+        #start-btn:hover { opacity: 0.9; }
+        
+        #drink-shop {
+            position: absolute;
+            right: 15px;
+            top: 15px;
+            z-index: 20;
+            display: flex;
+            gap: 8px;
+        }
+        .drink-item {
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 10px;
+            border-radius: 10px;
+            border: 2px solid #555;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            cursor: pointer;
+            text-align: center;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            min-width: 50px;
+            transition: transform 0.1s, border-color 0.1s, background 0.1s;
+        }
+        .drink-item.selected {
+            border-color: #4caf50;
+            background: rgba(30, 50, 30, 0.9);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <h1>AI時代の給料泥棒シミュレーター</h1>
+    <div class="description">あなたは最強のAIを裏で動かす天才（泥棒）。自分は何もしなくても画面上のタスクはAIが全自動処理！<br>ただし、上司（👹）の視界に引っかかると不審度が上昇します。</div>
+    
+    <div style="position: relative;">
+        <div id="game-container">
+            <div id="office-floor">
+                <div id="desk" class="entity">🖥️</div>
+                <div id="player" class="entity">🧑‍💻</div>
+                <div id="boss" class="entity">👹</div>
+                <div class="boss-sight" id="sight"></div>
+                
+                <div id="drink-shop">
+                    <div class="drink-item" id="drink-soda" data-index="0" title="炭酸水 (¥50 / 10%回復)">
+                        <span style="font-size: 28px;">🥤</span>
+                        <span style="font-size: 13px; font-weight: bold; color: #ffeb3b;">¥50</span>
+                        <span style="font-size: 10px; color: #aaa;">10%</span>
+                    </div>
+                    <div class="drink-item" id="drink-coffee" data-index="1" title="コーヒー (¥150 / 30%回復)">
+                        <span style="font-size: 28px;">☕</span>
+                        <span style="font-size: 13px; font-weight: bold; color: #ffeb3b;">¥150</span>
+                        <span style="font-size: 10px; color: #aaa;">30%</span>
+                    </div>
+                    <div class="drink-item" id="drink-energy" data-index="2" title="はちみつ (¥200 / 40%回復)">
+                        <span style="font-size: 28px;">🍯</span>
+                        <span style="font-size: 13px; font-weight: bold; color: #ffeb3b;">¥200</span>
+                        <span style="font-size: 10px; color: #aaa;">40%</span>
+                    </div>
+                    <div class="drink-item" id="drink-juice" data-index="3" title="特濃ジュース (¥500 / 全回復)">
+                        <span style="font-size: 28px;">🧃</span>
+                        <span style="font-size: 13px; font-weight: bold; color: #ffeb3b;">¥500</span>
+                        <span style="font-size: 10px; color: #aaa;">全回復</span>
+                    </div>
+                </div>
+            </div>
+            <div id="side-panel">
+                <div class="status-box">
+                    <div class="status-title">AI全自動処理タスク</div>
+                    <div id="task-name" style="font-weight: bold; font-size: 18px;">準備中...</div>
+                </div>
+                
+                <div class="status-box suspicion-box">
+                    <div class="status-title">上司の不審度 (MAXでクビ)</div>
+                    <div id="suspicion-text" class="status-value">0%</div>
+                    <div id="suspicion-container" class="suspicion-container"></div>
+                </div>
+
+                <div class="status-box" style="border-left-color: var(--stamina-color);"><div class="status-title">体力</div><div id="stamina-text" class="status-value">100%</div><div class="progress-bar-container"><div id="stamina-bar" class="progress-bar" style="background: var(--stamina-color); width: 100%;"></div></div></div>
+                
+                <div class="status-box" style="border-left-color: var(--will-color);"><div class="status-title">気力</div><div id="will-text" class="status-value">100%</div><div class="progress-bar-container"><div id="will-bar" class="progress-bar" style="background: var(--will-color); width: 100%;"></div></div></div>
+
+                <div class="status-box" style="border-left-color: #ffeb3b;"><div class="status-title">稼いだ給料 (スコア)</div><div id="score" class="status-value">¥0</div></div>
+                <div id="pc-screen"><div>[AI-System-Ready]</div><div>自動最適化マクロ起動中...</div></div>
+            </div>
+        </div>
+        <div id="overlay">
+            <h2 id="overlay-title" style="font-size:36px;">給料泥棒、業務開始</h2>
+            <p id="overlay-desc" style="font-size:21px;">黙って座っているだけで, AIが毎秒お金を稼ぎます。<br><span style="font-size: 17px; color: #aaa; margin-top: 10px; display: inline-block;">([Enter]キー または ボタンでスタート)</span></p>
+            <button id="start-btn">出勤する</button>
+        </div>
+    </div>
+    
+    <div id="controls-info"><strong>【操作方法】</strong><br>上司(👹)の視界の中にあなたの席(🖥️)が入ると不審度が上昇します。<br>上司の視界にいる間、<span class="key">スペースキー</span> または <span class="key">画面長押し</span> で「仕事やってるフリ（タイピング）」をしてください。<br>※お金が貯まると画面右上にドリンクが出現。<span class="key">左右キー</span>で緑色の枠を選択し、<span class="key">エンターキー</span>で飲むことができます。<br>※所持金が1000円を超えると、上司は外周を離れて自機に近づいてきます。</div>
+
+    <script>
+        let gameActive = false, isGameOver = false, score = 0, suspicion = 0, stamina = 100, willpower = 100, isHolding = false, isExhausted = false, exhaustedTimer = 0, currentTaskProgress = 0, currentTaskName = "";
+        let drinkCount = 0, isRestroom = false, restroomTimer = 0;
+        
+        const boss = { x: 30, y: 30, speed: 1.5 };
+        let patrolT = 0;
+
+        let behindMode = null; 
+        let behindPhase = 'traveling'; 
+        let behindActiveUntil = 0; 
+        let southPatrolX = 270;
+        let southPatrolDir = 1;
+
+        const drinksData = [
+            { id: 'drink-soda', cost: 50, rate: 0.1, name: '🥤 炭酸水' },
+            { id: 'drink-coffee', cost: 150, rate: 0.3, name: '☕ コーヒー' },
+            { id: 'drink-energy', cost: 200, rate: 0.4, name: '🍯 はちみつ' },
+            { id: 'drink-juice', cost: 500, rate: 1.0, name: '🧃 特濃ジュース' }
+        ];
+        let selectedDrinkIndex = 0;
+
+        function pickNewBehindMode(now) {
+            const modes = ['direct', 'nearWall', 'patrol'];
+            behindMode = modes[Math.floor(Math.random() * modes.length)];
+            if (behindMode === 'patrol') {
+                southPatrolX = boss.x;
+                southPatrolDir = (Math.random() < 0.5) ? 1 : -1;
+                behindPhase = 'active';
+                behindActiveUntil = now + 3000;
+            } else {
+                behindPhase = 'traveling';
+                behindActiveUntil = 0;
+            }
+        }
+
+        const OUTER_ZONE = { x0: 10, y0: 10, x1: 530, y1: 530 };
+
+        function getPerimeterPoint(t, zone) {
+            const w = zone.x1 - zone.x0, h = zone.y1 - zone.y0;
+            const perim = 2 * (w + h);
+            let d = ((t % 1) + 1) % 1 * perim;
+            if (d < w) return { x: zone.x0 + d, y: zone.y0 };
+            d -= w;
+            if (d < h) return { x: zone.x1, y: zone.y0 + d };
+            d -= h;
+            if (d < w) return { x: zone.x1 - d, y: zone.y1 };
+            d -= w;
+            return { x: zone.x0, y: zone.y1 - d };
+        }
+
+        const playerPos = { x: 270, y: 330 }, deskPos = { x: 270, y: 270 };
+        const aiTasks = ["コアビジネス戦略の自動AI生成...", "顧客データベースのサイレント同期...", "社内日報のAIディープフェイク自動提出...", "売上予測の超高速でっち上げ中...", "無駄な会議資料の全自動スライド生成...", "AIによる競合他社の自動ディスブランディング..."];
+        
+        const elBoss = document.getElementById('boss'), elSight = document.getElementById('sight'), elPlayer = document.getElementById('player'), elTaskName = document.getElementById('task-name'), elSuspicionText = document.getElementById('suspicion-text'), elStaminaBar = document.getElementById('stamina-bar'), elStaminaText = document.getElementById('stamina-text'), elWillBar = document.getElementById('will-bar'), elWillText = document.getElementById('will-text'), elScore = document.getElementById('score'), elPcScreen = document.getElementById('pc-screen'), elOverlay = document.getElementById('overlay'), elOverlayTitle = document.getElementById('overlay-title'), elOverlayDesc = document.getElementById('overlay-desc'), elStartBtn = document.getElementById('start-btn'), floor = document.getElementById('office-floor');
+        
+        const totalCells = 20;
+        const elSuspicionContainer = document.getElementById('suspicion-container');
+        const suspicionCells = [];
+        for (let i = 0; i < totalCells; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'suspicion-cell';
+            elSuspicionContainer.appendChild(cell);
+            suspicionCells.push(cell);
+        }
+
+        for(let i=60; i<600; i+=60) { 
+            let hLine = document.createElement('div'); hLine.className = 'grid-line'; hLine.style.width = '100%'; hLine.style.height = '1px'; hLine.style.top = i+'px'; floor.appendChild(hLine); 
+            let vLine = document.createElement('div'); vLine.className = 'grid-line'; vLine.style.width = '1px'; vLine.style.height = '100%'; vLine.style.left = i+'px'; floor.appendChild(vLine); 
+        }
+        
+        function addLog(text) { 
+            const line = document.createElement('div'); 
+            line.innerText = `[${new Date().toLocaleTimeString()}] ${text}`; 
+            elPcScreen.appendChild(line); 
+            if (elPcScreen.children.length > 9) elPcScreen.removeChild(elPcScreen.firstChild); 
+        }
+        
+        function nextTask() { 
+            currentTaskProgress = 0; 
+            currentTaskName = aiTasks[Math.floor(Math.random() * aiTasks.length)]; 
+            elTaskName.innerText = currentTaskName; 
+            addLog(`AI始動: ${currentTaskName.substring(0,10)}...`); 
+        }
+        
+        function startGame() { 
+            score = 0; suspicion = 0; stamina = 100; willpower = 100; isHolding = false; isExhausted = false; exhaustedTimer = 0; isGameOver = false;
+            drinkCount = 0; isRestroom = false; restroomTimer = 0;
+            elPlayer.style.top = '330px';
+            elPlayer.style.left = '270px';
+            boss.x = 30; boss.y = 30; patrolT = 0;
+            behindMode = null; behindPhase = 'traveling'; behindActiveUntil = 0; southPatrolX = 270; southPatrolDir = 1;
+            gameActive = true; elOverlay.style.display = 'none'; 
+            elScore.innerText = `¥${score.toLocaleString()}`;
+            selectedDrinkIndex = 0;
+            nextTask(); 
+            addLog("給料泥棒セッションが開始されました。"); 
+            requestAnimationFrame(gameLoop); 
+        }
+        
+        function gameOver() { 
+            gameActive = false; 
+            isGameOver = true;
+            score = 0;
+            elScore.innerText = `¥${score.toLocaleString()}`;
+            elOverlay.style.display = 'flex'; 
+            elOverlayTitle.innerText = "🚨 クビになりました 🚨"; 
+            elOverlayDesc.innerHTML = `あなたは上司にサボりを見破られました。<br><strong>生涯泥棒獲得賃金: ¥${score.toLocaleString()}</strong><br><span style="font-size: 17px; color: #aaa; margin-top: 10px; display: inline-block;">([Enter]キー または下のボタンで再スタート)</span>`; 
+            elStartBtn.innerText = "もう一度出勤する"; 
+        }
+
+        function getAvailableDrinkIndices() {
+            let available = [];
+            drinksData.forEach((d, idx) => {
+                if (score >= d.cost) available.push(idx);
+            });
+            return available;
+        }
+
+        function buySelectedDrink() {
+            let available = getAvailableDrinkIndices();
+            if (available.length === 0) return;
+            
+            if (!available.includes(selectedDrinkIndex)) {
+                selectedDrinkIndex = available[0];
+            }
+
+            let drink = drinksData[selectedDrinkIndex];
+            if (score >= drink.cost) {
+                score -= drink.cost;
+                elScore.innerText = `¥${score.toLocaleString()}`;
+                if (drink.rate >= 1) {
+                    stamina = 100;
+                    willpower = 100;
+                } else {
+                    stamina = Math.min(stamina + (100 * drink.rate), 100);
+                    willpower = Math.min(willpower + (100 * drink.rate), 100);
+                }
+                isExhausted = false;
+                exhaustedTimer = 0;
+                drinkCount++;
+                addLog(`${drink.name}を飲んだ！ 体力・気力が回復した（-¥${drink.cost}）`);
+
+                if (drinkCount >= 7 && !isRestroom) {
+                    isRestroom = true;
+                    restroomTimer = 1620; 
+                    drinkCount = 0;
+                    elPlayer.style.top = '650px';
+                    addLog("【トイレ】ドリンクの飲みすぎでトイレに駆け込みました！");
+                }
+            }
+        }
+        
+        window.addEventListener('keydown', (e) => { 
+            if(e.code === 'Space') {
+                e.preventDefault();
+                if(gameActive && !e.repeat && !isRestroom) isHolding = true; 
+            } else if(e.code === 'Enter') {
+                e.preventDefault();
+                if(!gameActive) {
+                    startGame();
+                } else if(gameActive && !isRestroom) {
+                    buySelectedDrink();
+                }
+            } else if(gameActive && !isRestroom && (e.code === 'ArrowRight' || e.code === 'ArrowLeft')) {
+                e.preventDefault();
+                let available = getAvailableDrinkIndices();
+                if (available.length > 0) {
+                    let curPos = available.indexOf(selectedDrinkIndex);
+                    if (curPos === -1) curPos = 0;
+
+                    if (e.code === 'ArrowRight') {
+                        curPos = (curPos + 1) % available.length;
+                    } else if (e.code === 'ArrowLeft') {
+                        curPos = (curPos - 1 + available.length) % available.length;
+                    }
+                    selectedDrinkIndex = available[curPos];
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => { 
+            if(e.code === 'Space') { 
+                e.preventDefault();
+                isHolding = false; 
+            } 
+        });
+        
+        drinksData.forEach((d, idx) => {
+            let el = document.getElementById(d.id);
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (!gameActive || isRestroom) return;
+                selectedDrinkIndex = idx;
+                buySelectedDrink();
+            });
+        });
+
+        floor.addEventListener('mousedown', () => { if(gameActive && !isRestroom) isHolding = true; });
+        window.addEventListener('mouseup', () => { isHolding = false; });
+        floor.addEventListener('touchstart', (e) => { if(gameActive && !isRestroom) { e.preventDefault(); isHolding = true; } });
+        window.addEventListener('touchend', () => { isHolding = false; });
+
+        function updateBoss() { 
+            if (isRestroom) {
+                if (restroomTimer > 1200) {
+                    // 通常時
+                } else {
+                    const target = { x: deskPos.x, y: deskPos.y + 60 };
+                    const dist = Math.hypot(target.x - boss.x, target.y - boss.y);
+                    if (dist > boss.speed) {
+                        const chaseAngle = Math.atan2(target.y - boss.y, target.x - boss.x);
+                        boss.x += Math.cos(chaseAngle) * boss.speed;
+                        boss.y += Math.sin(chaseAngle) * boss.speed;
+                    } else {
+                        boss.x = target.x;
+                        boss.y = target.y;
+                    }
+                    elBoss.style.left = boss.x + 'px'; 
+                    elBoss.style.top = boss.y + 'px'; 
+                    elSight.style.left = (boss.x + 30) + 'px';
+                    elSight.style.top = (boss.y + 30) + 'px';
+                    return;
+                }
+            }
+
+            if (score > 1000) {
+                const now = performance.now();
+                if (behindMode === null) pickNewBehindMode(now);
+
+                if (behindMode === 'patrol') {
+                    southPatrolX += southPatrolDir * boss.speed;
+                    if (southPatrolX >= OUTER_ZONE.x1) { southPatrolX = OUTER_ZONE.x1; southPatrolDir = -1; }
+                    if (southPatrolX <= OUTER_ZONE.x0) { southPatrolX = OUTER_ZONE.x0; southPatrolDir = 1; }
+                    const target = { x: southPatrolX, y: OUTER_ZONE.y1 };
+                    const dist = Math.hypot(target.x - boss.x, target.y - boss.y);
+                    if (dist > boss.speed) {
+                        const chaseAngle = Math.atan2(target.y - boss.y, target.x - boss.x);
+                        boss.x += Math.cos(chaseAngle) * boss.speed;
+                        boss.y += Math.sin(chaseAngle) * boss.speed;
+                    } else {
+                        boss.x = target.x;
+                        boss.y = target.y;
+                    }
+                    if (now >= behindActiveUntil) pickNewBehindMode(now);
+                } else {
+                    const target = (behindMode === 'direct')
+                        ? { x: playerPos.x, y: playerPos.y + 60 }
+                        : { x: playerPos.x, y: OUTER_ZONE.y1 };
+
+                    if (behindPhase === 'traveling') {
+                        const dist = Math.hypot(target.x - boss.x, target.y - boss.y);
+                        if (dist > boss.speed) {
+                            const chaseAngle = Math.atan2(target.y - boss.y, target.x - boss.x);
+                            boss.x += Math.cos(chaseAngle) * boss.speed;
+                            boss.y += Math.sin(chaseAngle) * boss.speed;
+                        } else {
+                            boss.x = target.x;
+                            boss.y = target.y;
+                            behindPhase = 'active';
+                            behindActiveUntil = now + 3000;
+                        }
+                    } else {
+                        boss.x = target.x;
+                        boss.y = target.y;
+                        if (now >= behindActiveUntil) pickNewBehindMode(now);
+                    }
+                }
+
+                elBoss.style.left = boss.x + 'px'; 
+                elBoss.style.top = boss.y + 'px'; 
+                elSight.style.left = (boss.x + 30) + 'px';
+                elSight.style.top = (boss.y + 30) + 'px';
+                return;
+            }
+
+            behindMode = null;
+
+            const perim = 2 * ((OUTER_ZONE.x1 - OUTER_ZONE.x0) + (OUTER_ZONE.y1 - OUTER_ZONE.y0));
+            const pathTarget = getPerimeterPoint(patrolT, OUTER_ZONE);
+            const distToPath = Math.hypot(pathTarget.x - boss.x, pathTarget.y - boss.y);
+
+            if (distToPath > boss.speed) {
+                const rejoinAngle = Math.atan2(pathTarget.y - boss.y, pathTarget.x - boss.x);
+                boss.x += Math.cos(rejoinAngle) * boss.speed;
+                boss.y += Math.sin(rejoinAngle) * boss.speed;
+            } else {
+                patrolT += boss.speed / perim;
+                const target = getPerimeterPoint(patrolT, OUTER_ZONE);
+                boss.x = target.x;
+                boss.y = target.y;
+            }
+            
+            elBoss.style.left = boss.x + 'px'; 
+            elBoss.style.top = boss.y + 'px'; 
+            elSight.style.left = (boss.x + 30) + 'px';
+            elSight.style.top = (boss.y + 30) + 'px';
+        }
+
+        function gameLoop() { 
+            if (!gameActive) return; 
+            
+            updateBoss(); 
+            
+            if (isRestroom) {
+                restroomTimer--;
+                elPlayer.innerText = "🏃💨";
+                isHolding = false;
+                if (restroomTimer <= 0) {
+                    isRestroom = false;
+                    elPlayer.style.top = '360px';
+                    elPlayer.style.left = '270px';
+                    addLog("トイレから戻ってきましたが、自席から少し離れた位置に着きました。");
+                }
+            } else {
+                currentTaskProgress += 0.4; 
+                if(currentTaskProgress >= 100) { 
+                    score += Math.floor(Math.random() * 150) + 100; 
+                    elScore.innerText = `¥${score.toLocaleString()}`; 
+                    addLog("【完了】AIが成果物を勝手に提出しました。給与発生！"); 
+                    nextTask(); 
+                } 
+            }
+
+            let available = getAvailableDrinkIndices();
+            if (available.length > 0 && !available.includes(selectedDrinkIndex)) {
+                selectedDrinkIndex = available[0];
+            }
+
+            drinksData.forEach((d, idx) => {
+                let el = document.getElementById(d.id);
+                if (score >= d.cost) {
+                    el.style.display = 'flex';
+                    if (idx === selectedDrinkIndex) {
+                        el.classList.add('selected');
+                    } else {
+                        el.classList.remove('selected');
+                    }
+                } else {
+                    el.style.display = 'none';
+                }
+            });
+            
+            if (isExhausted) {
+                exhaustedTimer -= 0.5;
+                elPlayer.innerText = "😵‍💫";
+                isHolding = false;
+
+                if (exhaustedTimer <= 0) {
+                    isExhausted = false;
+                }
+            } else {
+                if (!isRestroom) {
+                    if (isHolding && stamina > 0 && willpower > 0) {
+                        stamina = Math.max(stamina - 0.35, 0);
+                        willpower = Math.max(willpower - 0.4, 0);
+                        elPlayer.innerText = "👨‍💻⚡";
+                        if(Math.random() < 0.15) { 
+                            const logs = ["ポチポチ...", "ッターン！", "カタカタカタ...", "（めっちゃ真剣な顔）"]; 
+                            addLog(logs[Math.floor(Math.random() * logs.length)]); 
+                        }
+                        if (stamina === 0 || willpower === 0) {
+                            isExhausted = true;
+                            exhaustedTimer = 240; 
+                            addLog("【警告】体力と気力が限界を迎え、疲労困憊で動けなくなりました！");
+                        }
+                    } else {
+                        elPlayer.innerText = "🧑‍💻";
+                        stamina = Math.min(stamina + 0.2, 100);
+                        willpower = Math.min(willpower + 0.25, 100);
+                    }
+                }
+            }
+
+            elStaminaBar.style.width = stamina + '%';
+            elStaminaText.innerText = Math.floor(stamina) + '%';
+            elWillBar.style.width = willpower + '%';
+            elWillText.innerText = Math.floor(willpower) + '%';
+
+            const distToPlayer = Math.hypot(boss.x - playerPos.x, boss.y - playerPos.y); 
+            
+            // トイレ中：PCを見に来てからさらに2秒（120フレーム）経過するまでは不審ゲージがたまらないように修正
+            let isBossAtDesk = true;
+            if (isRestroom && restroomTimer > 1200) {
+                isBossAtDesk = false; // まだ見に来ていない期間
+            } else if (isRestroom && restroomTimer <= 1200 && restroomTimer > 1080) {
+                isBossAtDesk = false; // 到着したが、遅延2秒（120フレーム）が経過するまでの間
+            }
+
+            if (distToPlayer < 135 && isBossAtDesk) { 
+                if (isHolding && !isExhausted && !isRestroom) { 
+                    let decreaseRate = 0.1;
+                    if (score > 1000) {
+                        let factor = 1000 / Math.max(score, 1000);
+                        decreaseRate = 0.1 * factor;
+                    }
+                    suspicion = Math.max(suspicion - decreaseRate, 0); 
+                } else { 
+                    suspicion += 0.75; 
+                } 
+            } else { 
+                let decreaseRate = 0.05;
+                if (score > 1000) {
+                    let factor = 1000 / Math.max(score, 1000);
+                    decreaseRate = 0.05 * factor;
+                }
+                suspicion = Math.max(suspicion - decreaseRate, 0); 
+            } 
+            
+            elSuspicionText.innerText = Math.floor(suspicion) + '%'; 
+            
+            const activeCount = Math.floor((suspicion / 100) * totalCells);
+            suspicionCells.forEach((cell, index) => {
+                cell.className = 'suspicion-cell';
+                if (index < activeCount) {
+                    if (index < 10) cell.classList.add('active-low');
+                    else if (index < 16) cell.classList.add('active-mid');
+                    else cell.classList.add('active-high');
+                }
+            });
+
+            if(suspicion >= 100) { 
+                gameOver(); 
+                return; 
+            } 
+            
+            requestAnimationFrame(gameLoop); 
+        }
+
+        elStartBtn.addEventListener('click', () => { startGame(); });
+    </script>
+</body>
+</html>
